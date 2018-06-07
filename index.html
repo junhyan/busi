@@ -11,17 +11,20 @@
     <div id="app">
         <h2>{{title}}</h2>
         <h1>{{name}}</h1>
+        <h1>{{man}}</h1>
     </div>
     <script type="text/javascript">
     var ele = document.querySelector('#app');
     var busi = new Busi({
         name: 'hello world',
+        man: 'man',
         title: 'haha'
     }, ele);
 
     window.setTimeout(function () {
         busi.getData().name = 'canfoo';
         busi.getData().title = 'hehe';
+        busi.getData().man = 'man??';
     }, 2000);
 
 </script>
