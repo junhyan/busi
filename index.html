@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta charset="UTF-8">
+    <title>busi</title>
+    <script src="dist/busi.js"></script>
+
+</head>
+<body>
+    <div id="app">
+        <h2>{{title}}</h2>
+        <h1>{{name}}</h1>
+    </div>
+    <script type="text/javascript">
+    var ele = document.querySelector('#app');
+    var busi = new Busi({
+        name: 'hello world',
+        title: 'haha'
+    }, ele);
+
+    window.setTimeout(function () {
+        busi.getData().name = 'canfoo';
+        busi.getData().title = 'hehe';
+    }, 2000);
+
+</script>
+<body>
+<html>
