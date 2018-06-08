@@ -11,22 +11,38 @@
     <div id="app">
         <h2>{{title}}</h2>
         <h1>{{name}}</h1>
-        <h1>{{man}}</h1>
+        <input type="text" name="" b-model="man">
+        <div b-bind:class="class"></div>
+
     </div>
     <script type="text/javascript">
     var ele = document.querySelector('#app');
     var busi = new Busi({
         name: 'hello world',
         man: 'man',
-        title: 'haha'
+        title: 'haha',
+        class:'red'
     }, ele);
 
     window.setTimeout(function () {
-        busi.getData().name = 'canfoo';
-        busi.getData().title = 'hehe';
+        busi.name = 'canfoo';
+        busi.title = 'hehe';
         busi.getData().man = 'man??';
+        busi.class = 'green';
     }, 2000);
 
 </script>
+<style type="text/css">
+    .red {
+        height: 20px;
+        width: 20px;
+        background-color: red;
+    }
+    .green {
+        height: 20px;
+        width: 20px;
+        background-color: green;
+    }
+</style>>
 <body>
 <html>
