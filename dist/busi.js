@@ -50,6 +50,31 @@
       return value;
   };
 
+  function showNode (node) {
+  	if (node.style.display === 'none') {
+  		node.style.display = '';
+  	}
+  }
+  function hideNode (node) {
+  	if (node.style.display === '') {
+  		node.style.display = 'none';
+  	}
+  }
+
+  function isTextNode (node) {
+      return node.nodeType === 3;
+  }
+
+  function hasAttribute (attrs, attrName) {
+  	var res = false;
+  	Array.from(attrs).forEach(function (attr) {
+  		if (attr.name === attrName) {
+  			res = true;
+  		}
+  	});
+  	return res;
+  }
+
   var Compiler = function Compiler (el, component) {
   		this._el = el;
   		this._component = component;
@@ -58,7 +83,7 @@
   	Compiler.prototype.init = function init () {
       if (this._el) {
           this._fragment = this.nodeToFragment(this._el);
-          this.compileElement(this._fragment);
+          this.compileElement(this._fragment, false);
           this._el.appendChild(this._fragment);
       } else {
           console.log('Dom元素不存在');
@@ -74,7 +99,7 @@
       }
       return fragment;
   };
-  Compiler.prototype.compileElement = function compileElement (el) {
+  Compiler.prototype.compileElement = function compileElement (el, isFor) {
       var childNodes = el.childNodes;
       var self = this;
       Array.from(childNodes).forEach(function(node) {
@@ -82,37 +107,19 @@
           var text = node.textContent;
           var attrs = node.attributes;
 
-          self.isTextNode(node) && reg.test(text) && self.compileText(node, reg.exec(text)[1]);  // 判断是否是符合这种形式{{}}的指令
+          isTextNode(node) && reg.test(text) && self.compileText(node, reg.exec(text)[1], isFor);  // 判断是否是符合这种形式{{}}的指令
                   
              	attrs && Array.from(attrs).forEach(function (attr) {
              		if (self.isCommand(attr.name.split(':')[0])) {
-              		self.compileAttr(node, attr);
+              		self.compileAttr(node, attr, isFor);
               	}
              	});
               	
 
           if (node.childNodes && node.childNodes.length) {
-              self.compileElement(node);  // 继续递归遍历子节点
+              self.compileElement(node, isFor);  // 继续递归遍历子节点
           }
       });
-  };
-  Compiler.prototype.compileText = function compileText (node, exp) {
-      var self = this;
-      var initText = this._component.getData()[exp];
-      this.updateText(node, initText);  // 将初始化的数据初始化到视图中
-      new Watcher(this._component, exp, function (value) { // 生成订阅器并绑定更新函数
-          self.updateText(node, value);
-      });
-  };
-  Compiler.prototype.compileAttr = function compileAttr (node, attr) {
-      	var attrName = attr.name;
-      	if (/^b-model(.*)/.test(attrName)) {
-      		this.compileModel(node, attr);
-      	} else if (/^b-bind(.*)/.test(attrName)) {
-      		this.compileBind(node, attr);
-      	} else if (/^b-if(.*)/.test(attrName)) {
-      		this.compileIfAndElse(node, attr);
-      	}
   };
   Compiler.prototype.updateText = function updateText (node, value) {
       node.textContent = typeof value == 'undefined' ? '' : value;
@@ -130,41 +137,50 @@
 
       	}
   };
-  Compiler.prototype.showNode = function showNode (node) {
-      	if (node.style.display === 'none') {
-      		node.style.display = '';
-      	}
-  };
-  Compiler.prototype.hideNode = function hideNode (node) {
-      	if (node.style.display === '') {
-      		node.style.display = 'none';
-      	}
-  };
   Compiler.prototype.updateIfAndElse = function updateIfAndElse (node, value, nextNode) {
       	if (nextNode) {
   	    	if (value) {
-  	    		this.showNode(node);
-  	    		this.hideNode(nextNode);
+  	    		showNode(node);
+  	    		hideNode(nextNode);
   	    	} else {
-  	    		this.showNode(nextNode);
-  	    		this.hideNode(node);
+  	    		showNode(nextNode);
+  	    		hideNode(node);
   	    	}
   	} else {
   	    	if (value) {
-  	    		this.showNode(node);
+  	    		showNode(node);
   	    	} else {
-  	    		this.hideNode(node);
+  	    		hideNode(node);
   	    	}
   	}
   };
-  Compiler.prototype.isTextNode = function isTextNode (node) {
-      return node.nodeType === 3;
-  };
   Compiler.prototype.isCommand = function isCommand (attrName) {
-      	var commands = ['b-model', 'b-bind', 'b-if', 'b-else', 'b-for'];
+      	var commands = ['b-model', 'b-bind', 'b-if', 'b-for'];
       	return commands.includes(attrName);
   };
-  Compiler.prototype.compileModel = function compileModel (node, attr) {
+  Compiler.prototype.compileText = function compileText (node, exp, isFor) {
+      var self = this;
+      var initText = this._component.getData()[exp];
+      this.updateText(node, initText);  // 将初始化的数据初始化到视图中
+      if (!isFor) {
+  	    new Watcher(this._component, exp, function (value) { // 生成订阅器并绑定更新函数
+  	        self.updateText(node, value);
+  	    });
+  	}
+  };
+  Compiler.prototype.compileAttr = function compileAttr (node, attr, isFor) {
+      	var attrName = attr.name;
+      	if (/^b-model(.*)/.test(attrName)) {
+      		this.compileModel(node, attr, isFor);
+      	} else if (/^b-bind(.*)/.test(attrName)) {
+      		this.compileBind(node, attr, isFor);
+      	} else if (/^b-if(.*)/.test(attrName)) {
+      		this.compileIfAndElse(node, attr, isFor);
+      	} else if (/^b-for(.*)/.test(attrName)) {
+      		this.compileFor(node, attr, isFor);
+      	}
+  };
+  Compiler.prototype.compileModel = function compileModel (node, attr, isFor) {
       	var self = this;
       	var exp = attr.value;
       	var initModel = this._component.getData()[exp];
@@ -172,11 +188,13 @@
       node.oninput = function () {
           	self._component.getData()[exp] = node.value;
       };
-      	new Watcher(this._component, exp, function (value) { // 生成订阅器并绑定更新函数
-          self.updateModel(node, value);
-      });
+      if (!isFor) {
+  	    	new Watcher(this._component, exp, function (value) { // 生成订阅器并绑定更新函数
+  	        self.updateModel(node, value);
+  	    });
+  	}
   };
-  Compiler.prototype.compileBind = function compileBind (node, attr) {
+  Compiler.prototype.compileBind = function compileBind (node, attr, isFor) {
       var self = this;
       	var attrName = attr.name;
       	var option = attrName.split(':')[1];
@@ -189,20 +207,13 @@
   	// 		new Function(jsString)();
   	// 	}
       	// }
-      	new Watcher(this._component, exp, function (value) {
-          self.updateBind(node, option, value);
-      });
+      	if (!isFor) {
+  	    	new Watcher(this._component, exp, function (value) {
+  	        self.updateBind(node, option, value);
+  	    });
+  	}
   };
-  Compiler.prototype.hasAttribute = function hasAttribute (attrs, attrName) {
-      	var res = false;
-      	Array.from(attrs).forEach(function (attr) {
-      		if (attr.name === attrName) {
-      			res = true;
-      		}
-      	});
-      	return res;
-  };
-  Compiler.prototype.compileIfAndElse = function compileIfAndElse (node, attr) {
+  Compiler.prototype.compileIfAndElse = function compileIfAndElse (node, attr, isFor) {
       	var self = this;
       	var exp = attr.value;
       	var initIf = this._component.getData()[exp];
@@ -211,20 +222,52 @@
       	if (nextNode) {
       		nextAttrs = nextNode.attributes;
       	}
-      	if (nextAttrs && this.hasAttribute(nextAttrs, 'b-else')) {
+      	if (nextAttrs && hasAttribute(nextAttrs, 'b-else')) {
       		this.updateIfAndElse(node, initIf, nextNode); 
       	} else {
       		this.updateIfAndElse(node, initIf);
       	}
       	
-          
-      	new Watcher(this._component, exp, function (value) {
-          if (nextAttrs && self.hasAttribute(nextAttrs, 'b-else')) {
-      			self.updateIfAndElse(node, value, nextNode); 
-  	    	} else {
-  	    		self.updateIfAndElse(node, value);
-  	    	}
-      });
+      if (!isFor) {
+  	    	new Watcher(this._component, exp, function (value) {
+  	        if (nextAttrs && hasAttribute(nextAttrs, 'b-else')) {
+  	    			self.updateIfAndElse(node, value, nextNode); 
+  		    	} else {
+  		    		self.updateIfAndElse(node, value);
+  		    	}
+  	    });
+  	}
+  };
+  Compiler.prototype.compileFor = function compileFor (node, attr, isFor) {
+      	var self = this;
+      	//let forOption = attr.value;
+      	//(item, index) in list
+      	var options = attr.value.split(' in ');
+      	var exp = options[1].trim(),
+      		item,
+      		index;
+      	if (/.+,.+/.test(options[0])) {
+      		item = options[0].split(',')[0].trim();
+      		index = options[0].split(',')[1].trim();
+      	} else {
+      		item = options[0].trim();
+      	}
+      	var initList = this._component.getData()[exp];
+      this.updateFor(node, initList, item, index);  // 将初始化的数据初始化到视图中
+      	if (!isFor) {
+  	    	new Watcher(this._component, exp, function (list) { // 生成订阅器并绑定更新函数
+  	        self.updateFor(node, list, item, index);
+  	    });
+  	}
+  };
+  Compiler.prototype.updateFor = function updateFor (node, list, item, index) {
+      	var children = node.children;
+      	for(var i = 1; i<list.length; i++) {
+      		Array.from(children).forEach(function (cNode) {
+      			node.appendChild(cNode.cloneNode(true));
+      		});
+      	}
+      	this.compileElement(node, true);
   };
 
   /*

@@ -1,4 +1,10 @@
 import Watcher from './watcher';
+import {
+	showNode,
+	hideNode,
+	isTextNode,
+	hasAttribute
+} from './utils/util'
 
 export default class Compiler {
 	constructor (el, component) {
@@ -33,7 +39,7 @@ export default class Compiler {
             let text = node.textContent;
             let attrs = node.attributes;
 
-            self.isTextNode(node) && reg.test(text) && self.compileText(node, reg.exec(text)[1]);  // 判断是否是符合这种形式{{}}的指令
+            isTextNode(node) && reg.test(text) && self.compileText(node, reg.exec(text)[1]);  // 判断是否是符合这种形式{{}}的指令
                 
            	attrs && Array.from(attrs).forEach(function (attr) {
            		if (self.isCommand(attr.name.split(':')[0])) {
@@ -63,6 +69,8 @@ export default class Compiler {
     		this.compileBind(node, attr);
     	} else if (/^b-if(.*)/.test(attrName)) {
     		this.compileIfAndElse(node, attr);
+    	} else if (/^b-for(.*)/.test(attrName)) {
+    		this.compileFor(node, attr);
     	}
     }
     updateText (node, value) {
@@ -81,38 +89,25 @@ export default class Compiler {
 
     	}
     }
-    showNode (node) {
-    	if (node.style.display === 'none') {
-    		node.style.display = '';
-    	}
-    }
-    hideNode (node) {
-    	if (node.style.display === '') {
-    		node.style.display = 'none';
-    	}
-    }
     updateIfAndElse (node, value, nextNode) {
     	if (nextNode) {
 	    	if (value) {
-	    		this.showNode(node);
-	    		this.hideNode(nextNode);
+	    		showNode(node);
+	    		hideNode(nextNode);
 	    	} else {
-	    		this.showNode(nextNode);
-	    		this.hideNode(node);
+	    		showNode(nextNode);
+	    		hideNode(node);
 	    	}
 	    } else {
 	    	if (value) {
-	    		this.showNode(node);
+	    		showNode(node);
 	    	} else {
-	    		this.hideNode(node);
+	    		hideNode(node);
 	    	}
 	    }
     }
-    isTextNode (node) {
-        return node.nodeType === 3;
-    }
     isCommand (attrName) {
-    	let commands = ['b-model', 'b-bind', 'b-if', 'b-else', 'b-for'];
+    	let commands = ['b-model', 'b-bind', 'b-if', 'b-for'];
     	return commands.includes(attrName);
     }
     compileModel (node, attr) {
@@ -144,15 +139,6 @@ export default class Compiler {
             self.updateBind(node, option, value);
         });
     }
-    hasAttribute (attrs, attrName) {
-    	let res = false;
-    	Array.from(attrs).forEach(function (attr) {
-    		if (attr.name === attrName) {
-    			res = true;
-    		}
-    	});
-    	return res;
-    }
     compileIfAndElse (node, attr) {
     	let self = this;
     	let exp = attr.value;
@@ -162,7 +148,7 @@ export default class Compiler {
     	if (nextNode) {
     		nextAttrs = nextNode.attributes;
     	}
-    	if (nextAttrs && this.hasAttribute(nextAttrs, 'b-else')) {
+    	if (nextAttrs && hasAttribute(nextAttrs, 'b-else')) {
     		this.updateIfAndElse(node, initIf, nextNode); 
     	} else {
     		this.updateIfAndElse(node, initIf);
@@ -170,11 +156,39 @@ export default class Compiler {
     	
         
     	new Watcher(this._component, exp, function (value) {
-            if (nextAttrs && self.hasAttribute(nextAttrs, 'b-else')) {
+            if (nextAttrs && hasAttribute(nextAttrs, 'b-else')) {
     			self.updateIfAndElse(node, value, nextNode); 
 	    	} else {
 	    		self.updateIfAndElse(node, value);
 	    	}
         });
+    }
+    compileFor (node, attr) {
+    	let self = this;
+    	//let forOption = attr.value;
+    	//(item, index) in list
+    	let options = attr.value.split(' in ');
+    	let exp = options[1].trim(),
+    		item,
+    		index;
+    	if (/.+,.+/.test(options[0])) {
+    		item = options[0].split(',')[0].trim();
+    		index = options[0].split(',')[1].trim();
+    	} else {
+    		item = options[0].trim();
+    	}
+    	let initList = this._component.getData()[exp];
+        this.updateFor(node, initList, item, index);  // 将初始化的数据初始化到视图中
+    	new Watcher(this._component, exp, function (list) { // 生成订阅器并绑定更新函数
+            self.updateFor(node, list, item, index);
+        });
+    }
+    updateFor (node, list, item, index) {
+    	let children = node.children;
+    	for(let i = 1; i<list.length; i++) {
+    		Array.from(children).forEach(function (cNode) {
+    			node.appendChild(cNode.cloneNode(true));
+    		});
+    	}
     }
 }
