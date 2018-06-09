@@ -61,6 +61,8 @@ export default class Compiler {
     		this.compileModel(node, attr);
     	} else if (/^b-bind(.*)/.test(attrName)) {
     		this.compileBind(node, attr);
+    	} else if (/^b-if(.*)/.test(attrName)) {
+    		this.compileIfAndElse(node, attr);
     	}
     }
     updateText (node, value) {
@@ -79,11 +81,38 @@ export default class Compiler {
 
     	}
     }
+    showNode (node) {
+    	if (node.style.display === 'none') {
+    		node.style.display = '';
+    	}
+    }
+    hideNode (node) {
+    	if (node.style.display === '') {
+    		node.style.display = 'none';
+    	}
+    }
+    updateIfAndElse (node, value, nextNode) {
+    	if (nextNode) {
+	    	if (value) {
+	    		this.showNode(node);
+	    		this.hideNode(nextNode);
+	    	} else {
+	    		this.showNode(nextNode);
+	    		this.hideNode(node);
+	    	}
+	    } else {
+	    	if (value) {
+	    		this.showNode(node);
+	    	} else {
+	    		this.hideNode(node);
+	    	}
+	    }
+    }
     isTextNode (node) {
         return node.nodeType === 3;
     }
     isCommand (attrName) {
-    	let commands = ['b-model', 'b-bind'];
+    	let commands = ['b-model', 'b-bind', 'b-if', 'b-else', 'b-for'];
     	return commands.includes(attrName);
     }
     compileModel (node, attr) {
@@ -111,9 +140,41 @@ export default class Compiler {
 	    // 		new Function(jsString)();
 	    // 	}
     	// }
-    	new Watcher(this._component, exp, function (value) { // 生成订阅器并绑定更新函数
+    	new Watcher(this._component, exp, function (value) {
             self.updateBind(node, option, value);
         });
-
+    }
+    hasAttribute (attrs, attrName) {
+    	let res = false;
+    	Array.from(attrs).forEach(function (attr) {
+    		if (attr.name === attrName) {
+    			res = true;
+    		}
+    	});
+    	return res;
+    }
+    compileIfAndElse (node, attr) {
+    	let self = this;
+    	let exp = attr.value;
+    	let initIf = this._component.getData()[exp];
+    	let nextNode = node.nextElementSibling;
+    	let nextAttrs;
+    	if (nextNode) {
+    		nextAttrs = nextNode.attributes;
+    	}
+    	if (nextAttrs && this.hasAttribute(nextAttrs, 'b-else')) {
+    		this.updateIfAndElse(node, initIf, nextNode); 
+    	} else {
+    		this.updateIfAndElse(node, initIf);
+    	}
+    	
+        
+    	new Watcher(this._component, exp, function (value) {
+            if (nextAttrs && self.hasAttribute(nextAttrs, 'b-else')) {
+    			self.updateIfAndElse(node, value, nextNode); 
+	    	} else {
+	    		self.updateIfAndElse(node, value);
+	    	}
+        });
     }
 }
