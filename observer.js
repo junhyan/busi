@@ -19,7 +19,7 @@ export default class Observer {
 }
 
 export function observer(value) {
-    if (!value || typeof value !== 'object') {
+    if (!value || typeof value !== 'object' || value instanceof Array) {
         return;
     }
     new Observer(value)

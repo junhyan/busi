@@ -2,14 +2,14 @@ import Compiler from './compiler';
 import Observer from './observer';
 
 export default class Busi {
-    constructor (data, el, exp) {
-        this._data = data;
+    constructor (instance) {
+        this._data = instance.component.data;
         let self = this;
-        Object.keys(data).forEach(function(key) {
+        Object.keys(this._data).forEach(function(key) {
             self.proxy(key);
         });
-        this._observer = new Observer(data);
-        new Compiler(el, this);
+        this._observer = new Observer(this._data);
+        new Compiler(instance.el, this);
 
     }
     getData () {

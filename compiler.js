@@ -11,6 +11,7 @@ export default class Compiler {
 		this._el = el;
 		this._component = component;
 		this.init();
+		this.isFor = false;
 	}
 	init () {
         if (this._el) {
@@ -71,6 +72,7 @@ export default class Compiler {
     		this.compileIfAndElse(node, attr);
     	} else if (/^b-for(.*)/.test(attrName)) {
     		this.compileFor(node, attr);
+    		this.ifFor = true;
     	}
     }
     updateText (node, value) {
@@ -118,6 +120,8 @@ export default class Compiler {
         node.oninput = function () {
         	self._component.getData()[exp] = node.value;
         }
+        node.removeAttribute(attr.name);
+
     	new Watcher(this._component, exp, function (value) { // 生成订阅器并绑定更新函数
             self.updateModel(node, value);
         });
@@ -129,6 +133,8 @@ export default class Compiler {
     	let exp = attr.value;
     	let initBind = this._component.getData()[exp];
     	this.updateBind(node, option, initBind);
+        node.removeAttribute(attr.name);
+
     	// if (/^\<\%.*\%\>$/.test(value)) {
     	// 	let jsString = value.replace('<%', '').replace('%>','');
 	    // 	if (option === 'class') {
@@ -172,11 +178,12 @@ export default class Compiler {
     		item,
     		index;
     	if (/.+,.+/.test(options[0])) {
-    		item = options[0].split(',')[0].trim();
-    		index = options[0].split(',')[1].trim();
+    		item = options[0].split(',')[0].replace('(', '').trim();
+    		index = options[0].split(',')[1].replace(')', '').trim();
     	} else {
-    		item = options[0].trim();
+    		item = options[0].replace('(', '').replace(')', '').trim();
     	}
+    	
     	let initList = this._component.getData()[exp];
         this.updateFor(node, initList, item, index);  // 将初始化的数据初始化到视图中
     	new Watcher(this._component, exp, function (list) { // 生成订阅器并绑定更新函数
@@ -184,11 +191,77 @@ export default class Compiler {
         });
     }
     updateFor (node, list, item, index) {
-    	let children = node.children;
-    	for(let i = 1; i<list.length; i++) {
+    	let templateNode = document.createDocumentFragment();
+    	templateNode = node.cloneNode(true);
+    	let children = templateNode.children;
+    	let self = this;
+    	let fragments = [];
+    	for(let i = 0; i < list.length; i++) {
+    		let fragment = document.createDocumentFragment();
     		Array.from(children).forEach(function (cNode) {
-    			node.appendChild(cNode.cloneNode(true));
+    			fragment.appendChild(cNode.cloneNode(true));
     		});
+	    	fragments[i] = fragment;
     	}
+    	Array.from(node.children).forEach(function (cNode) {
+			node.removeChild(cNode);
+		});
+    	
+    	for(let i = 0; i < list.length; i++) {
+    		function compileForElement(itemNode) {
+	    		let childNodes = itemNode.childNodes;
+		        Array.from(childNodes).forEach(function(cNode) {
+		            let reg  = new RegExp('{{' + item + '.*}}');
+		            let text = cNode.textContent;
+		            let attrs = cNode.attributes;
+
+		            isTextNode(cNode) && reg.test(text) && self.updateText(cNode, 
+		            	list[i][text.split('.')[1].replace('}}', '').trim()]);
+		            attrs && Array.from(attrs).forEach(function (attr) {
+		            	let attrName = attr.name;
+		            	let attrValue = attr.value;
+		           		if (self.isCommand(attrName.split(':')[0])) {
+					    	if (/^b-bind(.*)/.test(attrName)) {
+					    		let option = attrName.split(':')[1];
+					    		self.updateBind(cNode, option, list[i][attrValue]);
+        						cNode.removeAttribute(attrName);
+					    	} else if (/^b-if(.*)/.test(attrName)) {
+					    		let nextNode = cNode.nextElementSibling;
+						    	let nextAttrs;
+						    	if (nextNode) {
+						    		nextAttrs = nextNode.attributes;
+						    	}
+						    	if (nextAttrs && hasAttribute(nextAttrs, 'b-else')) {
+						    		self.updateIfAndElse(cNode, list[i][attrValue], nextNode); 
+						    	} else {
+						    		self.updateIfAndElse(cNode, list[i][attrValue]);
+						    	}
+						    	cNode.removeAttribute(attrName);
+					    	} else if (/^b-for(.*)/.test(attrName)) {
+					    		let options = attrValue.split(' in ');
+						    	let exp = options[1].trim(),
+						    		item,
+						    		index;
+						    	if (/.+,.+/.test(options[0])) {
+						    		item = options[0].split(',')[0].replace('(', '').trim();
+						    		index = options[0].split(',')[1].replace(')', '').trim();
+						    	} else {
+						    		item = options[0].replace('(', '').replace(')', '').trim();
+						    	}
+						        self.updateFor(cNode, list[i][exp], item, index);
+						        cNode.removeAttribute(attrName);
+					    	}
+		            	}
+		           	});
+		            if (cNode.childNodes && cNode.childNodes.length) {
+		                compileForElement(cNode);  // 继续递归遍历子节点
+		            }
+		        });
+		    }
+		    compileForElement(fragments[i]);
+
+		    node.appendChild(fragments[i]);
+		}
+    	
     }
 }

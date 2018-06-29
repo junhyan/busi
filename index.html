@@ -15,39 +15,82 @@
             <div b-if="ccc">ccc</div>
          </div>
          <div b-else>bbbb</div>
-        <input type="text" name="" b-model="man">
+        <input type="text" name="" b-model="man.dd">
         <div b-bind:class="class"></div>
-        <div b-for="(item,index) in list"> 
-            <div>{{item.key}}</div>
+        <div b-for="(data,index) in list"> 
+            <div>{{data.key}}</div>
+            <div>{{data.color}}</div>
+            <div b-bind:class="color"></div>
+            <div b-if="aaa">aaaaa
+                <div b-if="ccc">ccc</div>
+            </div>
+            <div b-else>bbbb</div>
+            <div b-for="(aa,index) in forlist">
+                <div>{{aa.key}}</div>
+            </div>
         </div>
 
     </div>
     <script type="text/javascript">
-    var ele = document.querySelector('#app');
-    var busi = new Busi({
-        name: 'hello world',
-        man: 'man',
-        title: 'haha',
-        class:'red',
-        aaa:true,
-        ccc:true,
-        list:[
-        {
-            key : 1
-        },
-        {
-            key : 2
-        }
-        ]
-    }, ele);
+        // TODO 不存在隐藏
+        // 多级对象设置
+    var busi = new Busi(
+    {
+        component: {
+                data: {
+                    name: 'hello world',
+                    man: {dd:'dd'},
+                    title: 'haha',
+                    class:'red',
+                    aaa:true,
+                    ccc:true,
+                    list:[
+                    {
+                        key : 1,
+                        color: 'red',
+                        forlist : [
+                        {
+                            key:333
+                        },
+                        {
+                            key:333
+                        }
+                        ]
+                    },
+                    {
+                        key : 2,
+                        color: 'green',
+                        forlist : [
+                        {
+                            key:444
+                        },
+                        {
+                            key:444
+                        }
+                        ]
+                    }
+                    ]
+                }
+            }, 
+        el: document.querySelector('#app')
+    }
+    );
 
     window.setTimeout(function () {
         busi.name = 'canfoo';
         busi.title = 'hehe';
-        busi.getData().man = 'man??';
+        busi.getData().man.dd = 'man??';
         busi.class = 'green';
-        //busi.aaa = false;
+        busi.aaa = false;
         busi.ccc = false;
+        // busi.list = [
+        // {
+        //     key : 3
+        // },
+        // {
+        //     key : 4
+        // }
+        // ];
     }, 2000);
 
 </script>

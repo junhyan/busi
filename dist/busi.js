@@ -79,11 +79,12 @@
   		this._el = el;
   		this._component = component;
   		this.init();
+  		this.isFor = false;
   	};
   	Compiler.prototype.init = function init () {
       if (this._el) {
           this._fragment = this.nodeToFragment(this._el);
-          this.compileElement(this._fragment, false);
+          this.compileElement(this._fragment);
           this._el.appendChild(this._fragment);
       } else {
           console.log('Dom元素不存在');
@@ -99,7 +100,7 @@
       }
       return fragment;
   };
-  Compiler.prototype.compileElement = function compileElement (el, isFor) {
+  Compiler.prototype.compileElement = function compileElement (el) {
       var childNodes = el.childNodes;
       var self = this;
       Array.from(childNodes).forEach(function(node) {
@@ -107,19 +108,40 @@
           var text = node.textContent;
           var attrs = node.attributes;
 
-          isTextNode(node) && reg.test(text) && self.compileText(node, reg.exec(text)[1], isFor);  // 判断是否是符合这种形式{{}}的指令
+          isTextNode(node) && reg.test(text) && self.compileText(node, reg.exec(text)[1]);  // 判断是否是符合这种形式{{}}的指令
                   
              	attrs && Array.from(attrs).forEach(function (attr) {
              		if (self.isCommand(attr.name.split(':')[0])) {
-              		self.compileAttr(node, attr, isFor);
+              		self.compileAttr(node, attr);
               	}
              	});
               	
 
           if (node.childNodes && node.childNodes.length) {
-              self.compileElement(node, isFor);  // 继续递归遍历子节点
+              self.compileElement(node);  // 继续递归遍历子节点
           }
       });
+  };
+  Compiler.prototype.compileText = function compileText (node, exp) {
+      var self = this;
+      var initText = this._component.getData()[exp];
+      this.updateText(node, initText);  // 将初始化的数据初始化到视图中
+      new Watcher(this._component, exp, function (value) { // 生成订阅器并绑定更新函数
+          self.updateText(node, value);
+      });
+  };
+  Compiler.prototype.compileAttr = function compileAttr (node, attr) {
+      	var attrName = attr.name;
+      	if (/^b-model(.*)/.test(attrName)) {
+      		this.compileModel(node, attr);
+      	} else if (/^b-bind(.*)/.test(attrName)) {
+      		this.compileBind(node, attr);
+      	} else if (/^b-if(.*)/.test(attrName)) {
+      		this.compileIfAndElse(node, attr);
+      	} else if (/^b-for(.*)/.test(attrName)) {
+      		this.compileFor(node, attr);
+      		this.ifFor = true;
+      	}
   };
   Compiler.prototype.updateText = function updateText (node, value) {
       node.textContent = typeof value == 'undefined' ? '' : value;
@@ -158,29 +180,7 @@
       	var commands = ['b-model', 'b-bind', 'b-if', 'b-for'];
       	return commands.includes(attrName);
   };
-  Compiler.prototype.compileText = function compileText (node, exp, isFor) {
-      var self = this;
-      var initText = this._component.getData()[exp];
-      this.updateText(node, initText);  // 将初始化的数据初始化到视图中
-      if (!isFor) {
-  	    new Watcher(this._component, exp, function (value) { // 生成订阅器并绑定更新函数
-  	        self.updateText(node, value);
-  	    });
-  	}
-  };
-  Compiler.prototype.compileAttr = function compileAttr (node, attr, isFor) {
-      	var attrName = attr.name;
-      	if (/^b-model(.*)/.test(attrName)) {
-      		this.compileModel(node, attr, isFor);
-      	} else if (/^b-bind(.*)/.test(attrName)) {
-      		this.compileBind(node, attr, isFor);
-      	} else if (/^b-if(.*)/.test(attrName)) {
-      		this.compileIfAndElse(node, attr, isFor);
-      	} else if (/^b-for(.*)/.test(attrName)) {
-      		this.compileFor(node, attr, isFor);
-      	}
-  };
-  Compiler.prototype.compileModel = function compileModel (node, attr, isFor) {
+  Compiler.prototype.compileModel = function compileModel (node, attr) {
       	var self = this;
       	var exp = attr.value;
       	var initModel = this._component.getData()[exp];
@@ -188,32 +188,32 @@
       node.oninput = function () {
           	self._component.getData()[exp] = node.value;
       };
-      if (!isFor) {
-  	    	new Watcher(this._component, exp, function (value) { // 生成订阅器并绑定更新函数
-  	        self.updateModel(node, value);
-  	    });
-  	}
+      node.removeAttribute(attr.name);
+
+      	new Watcher(this._component, exp, function (value) { // 生成订阅器并绑定更新函数
+          self.updateModel(node, value);
+      });
   };
-  Compiler.prototype.compileBind = function compileBind (node, attr, isFor) {
+  Compiler.prototype.compileBind = function compileBind (node, attr) {
       var self = this;
       	var attrName = attr.name;
       	var option = attrName.split(':')[1];
       	var exp = attr.value;
       	var initBind = this._component.getData()[exp];
       	this.updateBind(node, option, initBind);
+      node.removeAttribute(attr.name);
+
       	// if (/^\<\%.*\%\>$/.test(value)) {
       	// 	let jsString = value.replace('<%', '').replace('%>','');
   	// 	if (option === 'class') {
   	// 		new Function(jsString)();
   	// 	}
       	// }
-      	if (!isFor) {
-  	    	new Watcher(this._component, exp, function (value) {
-  	        self.updateBind(node, option, value);
-  	    });
-  	}
+      	new Watcher(this._component, exp, function (value) {
+          self.updateBind(node, option, value);
+      });
   };
-  Compiler.prototype.compileIfAndElse = function compileIfAndElse (node, attr, isFor) {
+  Compiler.prototype.compileIfAndElse = function compileIfAndElse (node, attr) {
       	var self = this;
       	var exp = attr.value;
       	var initIf = this._component.getData()[exp];
@@ -228,17 +228,16 @@
       		this.updateIfAndElse(node, initIf);
       	}
       	
-      if (!isFor) {
-  	    	new Watcher(this._component, exp, function (value) {
-  	        if (nextAttrs && hasAttribute(nextAttrs, 'b-else')) {
-  	    			self.updateIfAndElse(node, value, nextNode); 
-  		    	} else {
-  		    		self.updateIfAndElse(node, value);
-  		    	}
-  	    });
-  	}
+          
+      	new Watcher(this._component, exp, function (value) {
+          if (nextAttrs && hasAttribute(nextAttrs, 'b-else')) {
+      			self.updateIfAndElse(node, value, nextNode); 
+  	    	} else {
+  	    		self.updateIfAndElse(node, value);
+  	    	}
+      });
   };
-  Compiler.prototype.compileFor = function compileFor (node, attr, isFor) {
+  Compiler.prototype.compileFor = function compileFor (node, attr) {
       	var self = this;
       	//let forOption = attr.value;
       	//(item, index) in list
@@ -247,27 +246,95 @@
       		item,
       		index;
       	if (/.+,.+/.test(options[0])) {
-      		item = options[0].split(',')[0].trim();
-      		index = options[0].split(',')[1].trim();
+      		item = options[0].split(',')[0].replace('(', '').trim();
+      		index = options[0].split(',')[1].replace(')', '').trim();
       	} else {
-      		item = options[0].trim();
+      		item = options[0].replace('(', '').replace(')', '').trim();
       	}
+      	
       	var initList = this._component.getData()[exp];
       this.updateFor(node, initList, item, index);  // 将初始化的数据初始化到视图中
-      	if (!isFor) {
-  	    	new Watcher(this._component, exp, function (list) { // 生成订阅器并绑定更新函数
-  	        self.updateFor(node, list, item, index);
-  	    });
-  	}
+      	new Watcher(this._component, exp, function (list) { // 生成订阅器并绑定更新函数
+          self.updateFor(node, list, item, index);
+      });
   };
   Compiler.prototype.updateFor = function updateFor (node, list, item, index) {
-      	var children = node.children;
-      	for(var i = 1; i<list.length; i++) {
+      	var templateNode = document.createDocumentFragment();
+      	templateNode = node.cloneNode(true);
+      	var children = templateNode.children;
+      	var self = this;
+      	var fragments = [];
+      	var loop = function ( i ) {
+      		var fragment = document.createDocumentFragment();
       		Array.from(children).forEach(function (cNode) {
-      			node.appendChild(cNode.cloneNode(true));
+      			fragment.appendChild(cNode.cloneNode(true));
       		});
-      	}
-      	this.compileElement(node, true);
+  	    	fragments[i] = fragment;
+      	};
+
+      	for(var i = 0; i < list.length; i++) loop( i );
+      	Array.from(node.children).forEach(function (cNode) {
+  			node.removeChild(cNode);
+  		});
+      	
+      	var loop$1 = function ( i ) {
+      		function compileForElement(itemNode) {
+  	    		var childNodes = itemNode.childNodes;
+  		    Array.from(childNodes).forEach(function(cNode) {
+  		        var reg  = new RegExp('{{' + item + '.*}}');
+  		        var text = cNode.textContent;
+  		        var attrs = cNode.attributes;
+
+  		        isTextNode(cNode) && reg.test(text) && self.updateText(cNode, 
+  		            	list[i][text.split('.')[1].replace('}}', '').trim()]);
+  		        attrs && Array.from(attrs).forEach(function (attr) {
+  		            	var attrName = attr.name;
+  		            	var attrValue = attr.value;
+  		           		if (self.isCommand(attrName.split(':')[0])) {
+  					    	if (/^b-bind(.*)/.test(attrName)) {
+  					    		var option = attrName.split(':')[1];
+  					    		self.updateBind(cNode, option, list[i][attrValue]);
+          						cNode.removeAttribute(attrName);
+  					    	} else if (/^b-if(.*)/.test(attrName)) {
+  					    		var nextNode = cNode.nextElementSibling;
+  						    	var nextAttrs;
+  						    	if (nextNode) {
+  						    		nextAttrs = nextNode.attributes;
+  						    	}
+  						    	if (nextAttrs && hasAttribute(nextAttrs, 'b-else')) {
+  						    		self.updateIfAndElse(cNode, list[i][attrValue], nextNode); 
+  						    	} else {
+  						    		self.updateIfAndElse(cNode, list[i][attrValue]);
+  						    	}
+  						    	cNode.removeAttribute(attrName);
+  					    	} else if (/^b-for(.*)/.test(attrName)) {
+  					    		var options = attrValue.split(' in ');
+  						    	var exp = options[1].trim(),
+  						    		item,
+  						    		index;
+  						    	if (/.+,.+/.test(options[0])) {
+  						    		item = options[0].split(',')[0].replace('(', '').trim();
+  						    		index = options[0].split(',')[1].replace(')', '').trim();
+  						    	} else {
+  						    		item = options[0].replace('(', '').replace(')', '').trim();
+  						    	}
+  						    self.updateFor(cNode, list[i][exp], item, index);
+  						    cNode.removeAttribute(attrName);
+  					    	}
+  		            	}
+  		           	});
+  		        if (cNode.childNodes && cNode.childNodes.length) {
+  		            compileForElement(cNode);  // 继续递归遍历子节点
+  		        }
+  		    });
+  		}
+  		compileForElement(fragments[i]);
+
+  		node.appendChild(fragments[i]);
+  		};
+
+      	for(var i$1 = 0; i$1 < list.length; i$1++) loop$1( i$1 );
+      	
   };
 
   /*
@@ -288,7 +355,7 @@
   };
 
   function observer(value) {
-      if (!value || typeof value !== 'object') {
+      if (!value || typeof value !== 'object' || value instanceof Array) {
           return;
       }
       new Observer(value);
@@ -317,14 +384,14 @@
 
   }
 
-  var Busi = function Busi (data, el, exp) {
-      this._data = data;
+  var Busi = function Busi (instance) {
+      this._data = instance.component.data;
       var self = this;
-      Object.keys(data).forEach(function(key) {
+      Object.keys(this._data).forEach(function(key) {
           self.proxy(key);
       });
-      this._observer = new Observer(data);
-      new Compiler(el, this);
+      this._observer = new Observer(this._data);
+      new Compiler(instance.el, this);
 
   };
   Busi.prototype.getData = function getData () {

@@ -26,12 +26,15 @@ const builds = {
     dest: path.resolve('dist/busi.js'),
     format: 'umd',
     alias: { he: './entity-decoder' },
-    banner
+    banner,
+    moduleName: 'Busi'
   },
 }
 
 function genConfig (name) {
+  console.log(name);
   const opts = builds[name]
+  console.log(opts);
   const config = {
     input: opts.entry,
     external: opts.external,
@@ -63,7 +66,6 @@ function genConfig (name) {
 
   return config
 }
-
 if (process.env.TARGET) {
   module.exports = genConfig(process.env.TARGET)
 } else {
