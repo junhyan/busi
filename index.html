@@ -29,11 +29,26 @@
                 <div>{{aa.key}}</div>
             </div>
         </div>
-
+        <list></list>
     </div>
     <script type="text/javascript">
         // TODO 不存在隐藏
         // 多级对象设置
+    Busi.component({
+        name: 'list',
+        template: '<ul><li>listitem1</li><li>{{name}}</li></ul><div>hahahhah</div>',
+        init: function () {
+            console.log('init');
+        },
+        ready: function () {
+            console.log('ready');        
+        },
+        methods: {
+            getName:function () {
+                console.log('getName');
+            }
+        }
+    });    
     var busi = new Busi(
     {
         component: {

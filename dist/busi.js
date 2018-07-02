@@ -7,9 +7,6 @@
   (global.Busi = factory());
 }(this, (function () { 'use strict';
 
-  /*
-  * Observe class
-  */
   var Dep = function Dep () {
   		this.subs = [];
   	};
@@ -384,15 +381,70 @@
 
   }
 
+  var Component = function Component (cOptions) {
+      this._name = cOptions.name;
+      this._template = cOptions.template;
+      this._props = cOptions.props;
+  };
+  Component.prototype.getComponentName = function getComponentName () {
+      return this._name;
+  };
+  Component.prototype.getComponentTemplate = function getComponentTemplate () {
+      return this._template;
+  };
+
+  var components = [];
   var Busi = function Busi (instance) {
       this._data = instance.component.data;
+      this.init(instance);
+
+  };
+  Busi.prototype.init = function init (instance) {
       var self = this;
       Object.keys(this._data).forEach(function(key) {
           self.proxy(key);
       });
       this._observer = new Observer(this._data);
+      // TODO 写一个待优化的遍历，之后与compiler合并
+      this.setComponents(instance.el);
       new Compiler(instance.el, this);
+  };
+  Busi.prototype.parseTemplate = function parseTemplate (template) {
 
+          　　 var objE = document.createElement("div");
+          
+          　　 objE.innerHTML = template;
+          
+          　　 return objE;
+          
+  };
+  Busi.prototype.getComponent = function getComponent (name) {
+      for (var i = 0; i < components.length; i++ ) {
+          if (components[i].getComponentName() === name.toLowerCase()) {
+              return components[i];
+          }
+      }
+      return null;
+
+  };
+  Busi.prototype.getElParent = function getElParent (el) {
+      return el.parentNode;
+  };
+  Busi.prototype.setComponents = function setComponents (el) {
+          var this$1 = this;
+
+      if (el) {
+          var children = el.children;
+          for (var i = 0; i<children.length; i++){
+              this$1.setComponents(children[i]);
+              var currentComp = this$1.getComponent(children[i].tagName);
+              if (currentComp) {
+                  this$1.getElParent(children[i]).replaceChild(this$1.parseTemplate(currentComp.getComponentTemplate()), children[i]);
+              }
+          }
+      } else {
+          return;
+      }
   };
   Busi.prototype.getData = function getData () {
       return this._data;
@@ -410,6 +462,12 @@
           }
       });
 
+  };
+  Busi.prototype.dispatchEvent = function dispatchEvent (component, name, event) {
+        
+  };
+  Busi.component = function(component) {
+      components.push(new Component(component));
   };
 
   return Busi;
