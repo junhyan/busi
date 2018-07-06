@@ -16,12 +16,32 @@ export class Component {
         Object.keys(this._data).forEach(function(key) {
             self.proxy(key);
         });
+        this.beforeCreate(compOptions);
         this._observer = new Observer(this._data);
-        // TODO 写一个待优化的遍历，之后与compiler合并
+        this.create(compOptions);
+        // TODO 写一个待优化的遍历，之后与compiler合并 or 不合并
         new Compiler(this);
-        this.parseComponents(this._el);
-        
+        this.beforeMount (compOptions);
+        this.mountComponents(this._el);
+        this.afterMount(compOptions);
     }
+    beforeCreate (compOptions) {
+        if (compOptions.beforeCreate) {
+            compOptions.beforeCreate();
+        }
+    }
+    create (compOptions) {
+        if (compOptions.create) {
+            compOptions.create();
+        }
+    }
+    beforeMount (compOptions) {
+
+    }
+    afterMount (compOptions) {
+
+    }
+
     getComponentId () {
         return this._id;
     }
@@ -56,11 +76,11 @@ export class Component {
     getElParent (el) {
         return el.parentNode;
     }
-    parseComponents(el) {
+    mountComponents(el) {
         if (el) {
             let children = el.children;
             for (let i = 0; i<children.length; i++){
-                this.parseComponents(children[i]);
+                this.mountComponents(children[i]);
                 if (!('align' in children[i])){  //TODO 需要更好的判断不是标准标签的方法
                     let compTag = children[i].tagName.toLowerCase() 
                     let currentCompObj = this.getComponent(compTag)
@@ -95,14 +115,4 @@ export class Component {
     }
     render (template) {
     }
-}
-
-Component.extend = function (compOptions) {
-    let superClass = this;
-    let subClass = function (compOptions) {
-        superClass.call(this, compOptions);
-    }
-    subClass.prototype = Object.create(superClass.prototype);
-    subClass.prototype.constructor = subClass;
-    return new subClass(compOptions);
 }

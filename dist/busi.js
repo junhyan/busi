@@ -396,12 +396,32 @@
       Object.keys(this._data).forEach(function(key) {
           self.proxy(key);
       });
+      this.beforeCreate(compOptions);
       this._observer = new Observer(this._data);
-      // TODO 写一个待优化的遍历，之后与compiler合并
+      this.create(compOptions);
+      // TODO 写一个待优化的遍历，之后与compiler合并 or 不合并
       new Compiler(this);
-      this.parseComponents(this._el);
-          
+      this.beforeMount (compOptions);
+      this.mountComponents(this._el);
+      this.afterMount(compOptions);
   };
+  Component.prototype.beforeCreate = function beforeCreate (compOptions) {
+      if (compOptions.beforeCreate) {
+          compOptions.beforeCreate();
+      }
+  };
+  Component.prototype.create = function create (compOptions) {
+      if (compOptions.create) {
+          compOptions.create();
+      }
+  };
+  Component.prototype.beforeMount = function beforeMount (compOptions) {
+
+  };
+  Component.prototype.afterMount = function afterMount (compOptions) {
+
+  };
+
   Component.prototype.getComponentId = function getComponentId () {
       return this._id;
   };
@@ -436,13 +456,13 @@
   Component.prototype.getElParent = function getElParent (el) {
       return el.parentNode;
   };
-  Component.prototype.parseComponents = function parseComponents (el) {
+  Component.prototype.mountComponents = function mountComponents (el) {
           var this$1 = this;
 
       if (el) {
           var children = el.children;
           for (var i = 0; i<children.length; i++){
-              this$1.parseComponents(children[i]);
+              this$1.mountComponents(children[i]);
               if (!('align' in children[i])){  //TODO 需要更好的判断不是标准标签的方法
                   var compTag = children[i].tagName.toLowerCase(); 
                   var currentCompObj = this$1.getComponent(compTag);
@@ -472,45 +492,9 @@
               self._data[key] = newVal;
           }
       });
-
   };
   Component.prototype.render = function render (template) {
   };
-
-  Component.extend = function (compOptions) {
-      var superClass = this;
-      var subClass = function (compOptions) {
-          superClass.call(this, compOptions);
-      };
-      subClass.prototype = Object.create(superClass.prototype);
-      subClass.prototype.constructor = subClass;
-      // subClass.prototype.init = function () {
-      //     console.log('222')
-      // };
-      return new subClass(compOptions);
-  };
-  // let a = Component.extend({
-  //     name: 'aaa',
-  //     template: '<ul><li>listitem1</li><li>{{name}}</li></ul><div>hahahhah</div>',
-  //     props: {
-  //         //test
-  //     },
-  //     data: {
-  //         cdata: 'aa'
-  //     },
-  //     init: function () {
-  //         console.log('init');
-  //     },
-  //     ready: function () {
-  //         console.log('ready');        
-  //     },
-  //     methods: {
-  //         getName:function () {
-  //             console.log('getName');
-  //         }
-  //     }
-  // });
-  // console.log(a.getComponentName());
 
   var componentId = 0;
   var Busi = function Busi (instance) {
@@ -529,6 +513,15 @@
       component.bName = name;
       component.bId = ++componentId;
       components.push(component);
+  };
+  Component.extend = function (compOptions) {
+      var superClass = this;
+      var subClass = function (compOptions) {
+          superClass.call(this, compOptions);
+      };
+      subClass.prototype = Object.create(superClass.prototype);
+      subClass.prototype.constructor = subClass;
+      return new subClass(compOptions);
   };
 
   return Busi;

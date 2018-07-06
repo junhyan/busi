@@ -20,4 +20,12 @@ Busi.component = function(name, instance) {
     component.bId = ++componentId;
     components.push(component);
 }
-
+Component.extend = function (compOptions) {
+    let superClass = this;
+    let subClass = function (compOptions) {
+        superClass.call(this, compOptions);
+    }
+    subClass.prototype = Object.create(superClass.prototype);
+    subClass.prototype.constructor = subClass;
+    return new subClass(compOptions);
+}
