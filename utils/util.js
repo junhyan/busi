@@ -22,3 +22,7 @@ export function hasAttribute (attrs, attrName) {
 	});
 	return res;
 }
+
+export function classExtend (subClass, superClass) {
+	
+}

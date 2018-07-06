@@ -30,13 +30,20 @@
             </div>
         </div>
         <list></list>
+        <router></router>
     </div>
     <script type="text/javascript">
         // TODO 不存在隐藏
         // 多级对象设置
-    Busi.component({
-        name: 'list',
-        template: '<ul><li>listitem1</li><li>{{name}}</li></ul><div>hahahhah</div>',
+        Busi.component({
+        name: 'show',
+        template: '<div>lalalalala</div><div>{{cdata}}</div>',
+        props: {
+            //test
+        },
+        data: {
+            cdata: 'bb'
+        },
         init: function () {
             console.log('init');
         },
@@ -48,18 +55,41 @@
                 console.log('getName');
             }
         }
-    });    
+    });  
+        Busi.component({
+        name: 'list',
+        template: '<ul><li>listitem1</li><li>{{cdata}}</li></ul><div>hahahhah</div><show></show>',
+        props: {
+            //test
+        },
+        data: {
+            cdata: 'aa'
+        },
+        init: function () {
+            console.log('init');
+        },
+        ready: function () {
+            console.log('ready');        
+        },
+        methods: {
+            getName:function () {
+                console.log('getName');
+            }
+        }
+    });  
     var busi = new Busi(
     {
         component: {
-                data: {
-                    name: 'hello world',
-                    man: {dd:'dd'},
-                    title: 'haha',
-                    class:'red',
-                    aaa:true,
-                    ccc:true,
-                    list:[
+            name: 'index',
+            el: document.querySelector('#app'),
+            data: {
+                name: 'hello world',
+                man: 'dd',
+                title: 'haha',
+                class:'red',
+                aaa:true,
+                ccc:true,
+                list:[
                     {
                         key : 1,
                         color: 'red',
@@ -84,20 +114,20 @@
                         }
                         ]
                     }
-                    ]
-                }
-            }, 
-        el: document.querySelector('#app')
+                ]
+            }
+        }, 
+        
     }
     );
-
+    let comp = busi.getinnerComponent();
     window.setTimeout(function () {
-        busi.name = 'canfoo';
-        busi.title = 'hehe';
-        busi.getData().man.dd = 'man??';
-        busi.class = 'green';
-        busi.aaa = false;
-        busi.ccc = false;
+        comp.name = 'canfoo';
+        comp.title = 'hehe';
+        comp.man = 'man??';
+        comp.class = 'green';
+        comp.aaa = false;
+        comp.ccc = false;
         // busi.list = [
         // {
         //     key : 3
@@ -107,7 +137,7 @@
         // }
         // ];
     }, 2000);
-
+    
 </script>
 <style type="text/css">
     .red {

@@ -7,9 +7,9 @@ import {
 } from './utils/util'
 
 export default class Compiler {
-	constructor (el, component) {
-		this._el = el;
+	constructor (component) {
 		this._component = component;
+		this._el = component.getComponentEl();
 		this.init();
 		this.isFor = false;
 	}

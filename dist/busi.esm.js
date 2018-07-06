@@ -66,9 +66,9 @@ function hasAttribute (attrs, attrName) {
 	return res;
 }
 
-var Compiler = function Compiler (el, component) {
-		this._el = el;
+var Compiler = function Compiler (component) {
 		this._component = component;
+		this._el = component.getComponentEl();
 		this.init();
 		this.isFor = false;
 	};
@@ -375,35 +375,35 @@ function defineReactive(obj, key, value) {
 
 }
 
-var Component = function Component (cOptions) {
-    this._name = cOptions.name;
-    this._template = cOptions.template;
-    this._props = cOptions.props;
-};
-Component.prototype.getComponentName = function getComponentName () {
-    return this._name;
-};
-Component.prototype.getComponentTemplate = function getComponentTemplate () {
-    return this._template;
-};
-
 var components = [];
-var Busi = function Busi (instance) {
-    this._data = instance.component.data;
-    this.init(instance);
-
+var Component = function Component (compOptions) {
+    this._name = compOptions.name;
+    this._template = compOptions.template;
+    this._el = compOptions.el || this.parseTemplate(this._template);
+    this._props = compOptions.props;
+    this._data = compOptions.data;
+    this.init(compOptions);
 };
-Busi.prototype.init = function init (instance) {
+Component.prototype.init = function init (compOptions) {
     var self = this;
     Object.keys(this._data).forEach(function(key) {
         self.proxy(key);
     });
     this._observer = new Observer(this._data);
     // TODO 写一个待优化的遍历，之后与compiler合并
-    this.setComponents(instance.el);
-    new Compiler(instance.el, this);
+    new Compiler(this);
+    this.parseComponents(this._el);
 };
-Busi.prototype.parseTemplate = function parseTemplate (template) {
+Component.prototype.getComponentName = function getComponentName () {
+    return this._name;
+};
+Component.prototype.getComponentEl = function getComponentEl () {
+    return this._el;
+};
+Component.prototype.getComponentTemplate = function getComponentTemplate () {
+    return this._template;
+};
+Component.prototype.parseTemplate = function parseTemplate (template) {
 
         　　 var objE = document.createElement("div");
         
@@ -412,7 +412,7 @@ Busi.prototype.parseTemplate = function parseTemplate (template) {
         　　 return objE;
         
 };
-Busi.prototype.getComponent = function getComponent (name) {
+Component.prototype.getComponent = function getComponent (name) {
     for (var i = 0; i < components.length; i++ ) {
         if (components[i].getComponentName() === name.toLowerCase()) {
             return components[i];
@@ -421,29 +421,30 @@ Busi.prototype.getComponent = function getComponent (name) {
     return null;
 
 };
-Busi.prototype.getElParent = function getElParent (el) {
+Component.prototype.getElParent = function getElParent (el) {
     return el.parentNode;
 };
-Busi.prototype.setComponents = function setComponents (el) {
+Component.prototype.parseComponents = function parseComponents (el) {
         var this$1 = this;
 
     if (el) {
         var children = el.children;
         for (var i = 0; i<children.length; i++){
-            this$1.setComponents(children[i]);
+            this$1.parseComponents(children[i]);
             var currentComp = this$1.getComponent(children[i].tagName);
             if (currentComp) {
-                this$1.getElParent(children[i]).replaceChild(this$1.parseTemplate(currentComp.getComponentTemplate()), children[i]);
+                this$1.getElParent(children[i]).replaceChild(currentComp._el, children[i]);
+
             }
         }
     } else {
         return;
     }
 };
-Busi.prototype.getData = function getData () {
+Component.prototype.getData = function getData () {
     return this._data;
 }; 
-Busi.prototype.proxy = function proxy (key) {
+Component.prototype.proxy = function proxy (key) {
     var self = this;
     Object.defineProperty(this, key, {
         enumerable: false,
@@ -457,11 +458,57 @@ Busi.prototype.proxy = function proxy (key) {
     });
 
 };
+Component.prototype.render = function render (template) {
+};
+
+Component.extend = function (compOptions) {
+    var superClass = this;
+    var subClass = function (compOptions) {
+        superClass.call(this, compOptions);
+    };
+    subClass.prototype = Object.create(superClass.prototype);
+    subClass.prototype.constructor = subClass;
+    // subClass.prototype.init = function () {
+    //     console.log('222')
+    // };
+    return new subClass(compOptions);
+};
+// let a = Component.extend({
+//     name: 'aaa',
+//     template: '<ul><li>listitem1</li><li>{{name}}</li></ul><div>hahahhah</div>',
+//     props: {
+//         //test
+//     },
+//     data: {
+//         cdata: 'aa'
+//     },
+//     init: function () {
+//         console.log('init');
+//     },
+//     ready: function () {
+//         console.log('ready');        
+//     },
+//     methods: {
+//         getName:function () {
+//             console.log('getName');
+//         }
+//     }
+// });
+// console.log(a.getComponentName());
+
+var Busi = function Busi (instance) {
+    //this._data = instance.component.data;
+    //this.init(instance);
+    this._componet = new Component(instance.component);
+};
+Busi.prototype.getinnerComponent = function getinnerComponent () {
+    return this._componet;
+};
 Busi.prototype.dispatchEvent = function dispatchEvent (component, name, event) {
       
 };
 Busi.component = function(component) {
-    components.push(new Component(component));
+    components.push(Component.extend(component));
 };
 
 export default Busi;
