@@ -383,7 +383,8 @@
 
   var components = [];
   var Component = function Component (compOptions) {
-      this._name = compOptions.name;
+      this._id = compOptions.bId;
+      this._name = compOptions.bName;
       this._template = compOptions.template;
       this._el = compOptions.el || this.parseTemplate(this._template);
       this._props = compOptions.props;
@@ -399,6 +400,10 @@
       // TODO 写一个待优化的遍历，之后与compiler合并
       new Compiler(this);
       this.parseComponents(this._el);
+          
+  };
+  Component.prototype.getComponentId = function getComponentId () {
+      return this._id;
   };
   Component.prototype.getComponentName = function getComponentName () {
       return this._name;
@@ -419,8 +424,9 @@
           
   };
   Component.prototype.getComponent = function getComponent (name) {
+      name = name.toLowerCase();
       for (var i = 0; i < components.length; i++ ) {
-          if (components[i].getComponentName() === name.toLowerCase()) {
+          if (components[i].bName === name) {
               return components[i];
           }
       }
@@ -437,11 +443,15 @@
           var children = el.children;
           for (var i = 0; i<children.length; i++){
               this$1.parseComponents(children[i]);
-              var currentComp = this$1.getComponent(children[i].tagName);
-              if (currentComp) {
-                  this$1.getElParent(children[i]).replaceChild(currentComp._el, children[i]);
-
+              if (!('align' in children[i])){  //TODO 需要更好的判断不是标准标签的方法
+                  var compTag = children[i].tagName.toLowerCase(); 
+                  var currentCompObj = this$1.getComponent(compTag);
+                  if (currentCompObj) {
+                      var currentComp = Component.extend(currentCompObj);
+                      this$1.getElParent(children[i]).replaceChild(currentComp.getComponentEl(), children[i]);
+                  }
               }
+                  
           }
       } else {
           return;
@@ -502,6 +512,7 @@
   // });
   // console.log(a.getComponentName());
 
+  var componentId = 0;
   var Busi = function Busi (instance) {
       //this._data = instance.component.data;
       //this.init(instance);
@@ -513,8 +524,11 @@
   Busi.prototype.dispatchEvent = function dispatchEvent (component, name, event) {
         
   };
-  Busi.component = function(component) {
-      components.push(Component.extend(component));
+  Busi.component = function(name, instance) {
+      var component = instance || {};
+      component.bName = name;
+      component.bId = ++componentId;
+      components.push(component);
   };
 
   return Busi;

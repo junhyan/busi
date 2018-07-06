@@ -3,7 +3,8 @@ import Observer from './observer';
 export const components = [];
 export class Component {
     constructor (compOptions) {
-        this._name = compOptions.name;
+        this._id = compOptions.bId;
+        this._name = compOptions.bName;
         this._template = compOptions.template;
         this._el = compOptions.el || this.parseTemplate(this._template);
         this._props = compOptions.props;
@@ -20,6 +21,9 @@ export class Component {
         new Compiler(this);
         this.parseComponents(this._el);
         
+    }
+    getComponentId () {
+        return this._id;
     }
     getComponentName () {
         return this._name;
@@ -40,8 +44,9 @@ export class Component {
         
     }
     getComponent (name) {
+        name = name.toLowerCase();
         for (let i = 0; i < components.length; i++ ) {
-            if (components[i].getComponentName() === name.toLowerCase()) {
+            if (components[i].bName === name) {
                 return components[i];
             }
         }
@@ -56,11 +61,17 @@ export class Component {
             let children = el.children;
             for (let i = 0; i<children.length; i++){
                 this.parseComponents(children[i]);
-                let currentComp = this.getComponent(children[i].tagName)
-                if (currentComp) {
-                    this.getElParent(children[i]).replaceChild(currentComp._el, children[i]);
-
+                if (!('align' in children[i])){  //TODO 需要更好的判断不是标准标签的方法
+                    let compTag = children[i].tagName.toLowerCase() 
+                    let currentCompObj = this.getComponent(compTag)
+                    if (currentCompObj) {
+                        let currentComp = Component.extend(currentCompObj);
+                        this.getElParent(children[i]).replaceChild(currentComp.getComponentEl(), children[i]);
+                    } else {
+                        //console.error(compTag + ' component isn\'t exist.' );
+                    }
                 }
+                
             }
         } else {
             return;
@@ -81,7 +92,6 @@ export class Component {
                 self._data[key] = newVal;
             }
         });
-
     }
     render (template) {
     }
@@ -94,30 +104,5 @@ Component.extend = function (compOptions) {
     }
     subClass.prototype = Object.create(superClass.prototype);
     subClass.prototype.constructor = subClass;
-    // subClass.prototype.init = function () {
-    //     console.log('222')
-    // };
     return new subClass(compOptions);
 }
-// let a = Component.extend({
-//     name: 'aaa',
-//     template: '<ul><li>listitem1</li><li>{{name}}</li></ul><div>hahahhah</div>',
-//     props: {
-//         //test
-//     },
-//     data: {
-//         cdata: 'aa'
-//     },
-//     init: function () {
-//         console.log('init');
-//     },
-//     ready: function () {
-//         console.log('ready');        
-//     },
-//     methods: {
-//         getName:function () {
-//             console.log('getName');
-//         }
-//     }
-// });
-// console.log(a.getComponentName());

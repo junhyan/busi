@@ -35,29 +35,8 @@
     <script type="text/javascript">
         // TODO 不存在隐藏
         // 多级对象设置
-        Busi.component({
-        name: 'show',
-        template: '<div>lalalalala</div><div>{{cdata}}</div>',
-        props: {
-            //test
-        },
-        data: {
-            cdata: 'bb'
-        },
-        init: function () {
-            console.log('init');
-        },
-        ready: function () {
-            console.log('ready');        
-        },
-        methods: {
-            getName:function () {
-                console.log('getName');
-            }
-        }
-    });  
-        Busi.component({
-        name: 'list',
+        
+        Busi.component('list', {
         template: '<ul><li>listitem1</li><li>{{cdata}}</li></ul><div>hahahhah</div><show></show>',
         props: {
             //test
@@ -77,6 +56,26 @@
             }
         }
     });  
+    Busi.component('show', {
+        template: '<div>lalalalala</div><div>{{cdata}}</div><bala></bala>',
+        props: {
+            //test
+        },
+        data: {
+            cdata: 'bb'
+        },
+        init: function () {
+            console.log('init');
+        },
+        ready: function () {
+            console.log('ready');        
+        },
+        methods: {
+            getName:function () {
+                console.log('getName');
+            }
+        }
+    }); 
     var busi = new Busi(
     {
         component: {
