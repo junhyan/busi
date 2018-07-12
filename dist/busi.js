@@ -47,6 +47,8 @@
       return value;
   };
 
+  var components = [];
+
   function showNode (node) {
   	if (node.style.display === 'none') {
   		node.style.display = '';
@@ -75,8 +77,6 @@
   var Compiler = function Compiler (component) {
   		this._component = component;
   		this._el = component.getComponentEl();
-  		// this.init();
-  		// this.isFor = false;
   	};
   	Compiler.prototype.init = function init () {
       if (this._el) {
@@ -88,7 +88,7 @@
       }
   };
   Compiler.prototype.nodeToFragment = function nodeToFragment (el) {
-      var fragment = document.createDocumentFragment();
+      var fragment = document.createDocumentFragment(); // avoid reflow
       var child = el.firstChild;
       while (child) {
           // 将Dom元素移入fragment中
@@ -103,25 +103,64 @@
       Array.from(childNodes).forEach(function(node) {
           var reg = /\{\{(.*)\}\}/;
           var text = node.textContent;
-          var attrs = node.attributes;
-
           isTextNode(node) && reg.test(text) && self.compileText(node, reg.exec(text)[1]);  // 判断是否是符合这种形式{{}}的指令
-                  
-             	attrs && Array.from(attrs).forEach(function (attr) {
-             		if (self.isCommand(attr.name.split(':')[0])) {
-              		self.compileAttr(node, attr);
-              	}
-             	});
-              	
-
+          if (node.tagName) {
+  				var attrs = node.attributes;
+  				attrs && Array.from(attrs).forEach(function (attr) {
+  					if (self.isCommand(attr.name.split(':')[0])) {
+  						self.compileAttr(node, attr);
+  					}
+  				});
+  				
+  				var compTag = node.tagName.toLowerCase(); 
+  				var currentCompObj = self.getComponent(compTag);
+  				if (currentCompObj) {
+  					var currentComp = self._component.extendComp(currentCompObj);
+  					self.getElParent(node).replaceChild(currentComp.getComponentEl(), node);
+  				}
+  			}
           if (node.childNodes && node.childNodes.length) {
               self.compileElement(node);  // 继续递归遍历子节点
           }
       });
+  	};
+  	Compiler.prototype.getComponent = function getComponent (name) {
+      name = name.toLowerCase();
+      for (var i = 0; i < components.length; i++ ) {
+          if (components[i].bName === name) {
+              return components[i];
+          }
+      }
+      return null;
+
   };
+  Compiler.prototype.getElParent = function getElParent (el) {
+      return el.parentNode;
+  };
+  // mountComponents(el) {
+  // if (el) {
+  //     let children = el.children;
+  //     for (let i = 0; i<children.length; i++){
+  //         this.mountComponents(children[i]);
+  //         if (!('align' in children[i])){  //TODO 需要更好的判断不是标准标签的方法
+  //             let compTag = children[i].tagName.toLowerCase() 
+  //             let currentCompObj = this.getComponent(compTag)
+  //             if (currentCompObj) {
+  //                 let currentComp = this._component.extendComp(currentCompObj);
+  //                 this.getElParent(children[i]).replaceChild(currentComp.getComponentEl(), children[i]);
+  //             } else {
+  //                 //console.error(compTag + ' component isn\'t exist.' );
+  //             }
+  //         }
+                  
+  //     }
+  // } else {
+  //     return;
+  // }
+  // }
   Compiler.prototype.compileText = function compileText (node, exp) {
       var self = this;
-      var initText = this._component.getData()[exp];
+      var initText = this._component.getData()[exp] || this._component.getProps()[exp];
       this.updateText(node, initText);  // 将初始化的数据初始化到视图中
       new Watcher(this._component, exp, function (value) { // 生成订阅器并绑定更新函数
           self.updateText(node, value);
@@ -151,7 +190,11 @@
       		case 'class':
       			node.className = value;
       			break;
-      		default:
+  			default:
+  				var subComp = this.getComponent(node.tagName);
+  				if (subComp) {
+  					subComp.props[option] = value;
+  				}
       			console.log('for props');
 
       	}
@@ -180,7 +223,7 @@
   Compiler.prototype.compileModel = function compileModel (node, attr) {
       	var self = this;
       	var exp = attr.value;
-      	var initModel = this._component.getData()[exp];
+      	var initModel = this._component.getData()[exp] || this._component.getProps()[exp];
       this.updateModel(node, initModel);  // 将初始化的数据初始化到视图中
       node.oninput = function () {
           	self._component.getData()[exp] = node.value;
@@ -196,7 +239,7 @@
       	var attrName = attr.name;
       	var option = attrName.split(':')[1];
       	var exp = attr.value;
-      	var initBind = this._component.getData()[exp];
+      	var initBind = this._component.getData()[exp] || this._component.getProps()[exp];
       	this.updateBind(node, option, initBind);
       node.removeAttribute(attr.name);
 
@@ -213,7 +256,7 @@
   Compiler.prototype.compileIfAndElse = function compileIfAndElse (node, attr) {
       	var self = this;
       	var exp = attr.value;
-      	var initIf = this._component.getData()[exp];
+      	var initIf = this._component.getData()[exp] || this._component.getProps()[exp];
       	var nextNode = node.nextElementSibling;
       	var nextAttrs;
       	if (nextNode) {
@@ -249,7 +292,7 @@
       		item = options[0].replace('(', '').replace(')', '').trim();
       	}
       	
-      	var initList = this._component.getData()[exp];
+      	var initList = this._component.getData()[exp] || this._component.getProps()[exp];
       this.updateFor(node, initList, item, index);  // 将初始化的数据初始化到视图中
       	new Watcher(this._component, exp, function (list) { // 生成订阅器并绑定更新函数
           self.updateFor(node, list, item, index);
@@ -381,7 +424,6 @@
 
   }
 
-  var components = [];
   var Component = function Component () {};
 
   Component.prototype.init = function init (compOptions) {
@@ -389,7 +431,7 @@
       this._name = compOptions.bName;
       this._template = compOptions.template;
       this._el = compOptions.el || this.parseTemplate(this._template);
-      this._props = compOptions.props;
+      this._props = compOptions.props || {};
       this._data = compOptions.data;
       // let self = this;
       // Object.keys(this._data).forEach(function(key) {
@@ -401,7 +443,7 @@
       // TODO 写一个待优化的遍历，之后与compiler合并 or 不合并
       new Compiler(this).init();
       this.beforeMount (compOptions);
-      this.mountComponents(this._el);
+     // this.mountComponents(this._el);
       this.afterMount(compOptions);
 
   };
@@ -443,43 +485,15 @@
           　　 return objE;
           
   };
-  Component.prototype.getComponent = function getComponent (name) {
-      name = name.toLowerCase();
-      for (var i = 0; i < components.length; i++ ) {
-          if (components[i].bName === name) {
-              return components[i];
-          }
-      }
-      return null;
-
-  };
-  Component.prototype.getElParent = function getElParent (el) {
-      return el.parentNode;
-  };
-  Component.prototype.mountComponents = function mountComponents (el) {
-          var this$1 = this;
-
-      if (el) {
-          var children = el.children;
-          for (var i = 0; i<children.length; i++){
-              this$1.mountComponents(children[i]);
-              if (!('align' in children[i])){  //TODO 需要更好的判断不是标准标签的方法
-                  var compTag = children[i].tagName.toLowerCase(); 
-                  var currentCompObj = this$1.getComponent(compTag);
-                  if (currentCompObj) {
-                      var currentComp = Component.extend(currentCompObj);
-                      this$1.getElParent(children[i]).replaceChild(currentComp.getComponentEl(), children[i]);
-                  }
-              }
-                  
-          }
-      } else {
-          return;
-      }
+  Component.prototype.extendComp = function extendComp (compObj) {
+      return Component.extend(compObj);
   };
   Component.prototype.getData = function getData () {
       return this._data;
-  }; 
+  };
+  Component.prototype.getProps = function getProps () {
+      return this._props;
+  };
   Component.prototype.proxy = function proxy (key) {
       var self = this;
       Object.defineProperty(this, key, {

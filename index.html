@@ -37,7 +37,7 @@
         // 多级对象设置
         
         Busi.component('list', {
-        template: '<ul><li>listitem1</li><li>{{cdata}}</li></ul><div>hahahhah</div><show></show>',
+        template: '<ul><li>listitem1</li><li>{{cdata}}</li></ul><div>hahahhah</div><show b-bind:test="cdata"></show>',
         props: {
             //test
         },
@@ -57,9 +57,9 @@
         }
     });  
     Busi.component('show', {
-        template: '<div>lalalalala</div><div>{{cdata}}</div><bala></bala>',
+        template: '<div>{{test}}</div><div>{{cdata}}</div><bala></bala>',
         props: {
-            //test
+            test: 'ddd'
         },
         data: {
             cdata: 'bb'

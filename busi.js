@@ -1,5 +1,7 @@
 
-import {Component,components} from './component';
+import {Component} from './component';
+import {components} from './global';
+
 var componentId = 0;
 export default class Busi {
     constructor (instance) {

@@ -1,4 +1,5 @@
 import Watcher from './watcher';
+import {components} from './global';
 import {
 	showNode,
 	hideNode,
@@ -10,8 +11,6 @@ export default class Compiler {
 	constructor (component) {
 		this._component = component;
 		this._el = component.getComponentEl();
-		// this.init();
-		// this.isFor = false;
 	}
 	init () {
         if (this._el) {
@@ -23,7 +22,7 @@ export default class Compiler {
         }
     }
     nodeToFragment (el) {
-        let fragment = document.createDocumentFragment();
+        let fragment = document.createDocumentFragment(); // avoid reflow
         let child = el.firstChild;
         while (child) {
             // 将Dom元素移入fragment中
@@ -38,25 +37,64 @@ export default class Compiler {
         Array.from(childNodes).forEach(function(node) {
             let reg = /\{\{(.*)\}\}/;
             let text = node.textContent;
-            let attrs = node.attributes;
-
             isTextNode(node) && reg.test(text) && self.compileText(node, reg.exec(text)[1]);  // 判断是否是符合这种形式{{}}的指令
-                
-           	attrs && Array.from(attrs).forEach(function (attr) {
-           		if (self.isCommand(attr.name.split(':')[0])) {
-            		self.compileAttr(node, attr);
-            	}
-           	});
-            	
-
+            if (node.tagName) {
+				let attrs = node.attributes;
+				attrs && Array.from(attrs).forEach(function (attr) {
+					if (self.isCommand(attr.name.split(':')[0])) {
+						self.compileAttr(node, attr);
+					}
+				});
+				
+				let compTag = node.tagName.toLowerCase() 
+				let currentCompObj = self.getComponent(compTag)
+				if (currentCompObj) {
+					let currentComp = self._component.extendComp(currentCompObj);
+					self.getElParent(node).replaceChild(currentComp.getComponentEl(), node);
+				}
+			}
             if (node.childNodes && node.childNodes.length) {
                 self.compileElement(node);  // 继续递归遍历子节点
             }
         });
+	}
+	getComponent (name) {
+        name = name.toLowerCase();
+        for (let i = 0; i < components.length; i++ ) {
+            if (components[i].bName === name) {
+                return components[i];
+            }
+        }
+        return null;
+
     }
+    getElParent (el) {
+        return el.parentNode;
+    }
+    // mountComponents(el) {
+    //     if (el) {
+    //         let children = el.children;
+    //         for (let i = 0; i<children.length; i++){
+    //             this.mountComponents(children[i]);
+    //             if (!('align' in children[i])){  //TODO 需要更好的判断不是标准标签的方法
+    //                 let compTag = children[i].tagName.toLowerCase() 
+    //                 let currentCompObj = this.getComponent(compTag)
+    //                 if (currentCompObj) {
+    //                     let currentComp = this._component.extendComp(currentCompObj);
+    //                     this.getElParent(children[i]).replaceChild(currentComp.getComponentEl(), children[i]);
+    //                 } else {
+    //                     //console.error(compTag + ' component isn\'t exist.' );
+    //                 }
+    //             }
+                
+    //         }
+    //     } else {
+    //         return;
+    //     }
+    // }
     compileText (node, exp) {
         let self = this;
-        let initText = this._component.getData()[exp];
+        let initText = this._component.getData()[exp] || this._component.getProps()[exp];
         this.updateText(node, initText);  // 将初始化的数据初始化到视图中
         new Watcher(this._component, exp, function (value) { // 生成订阅器并绑定更新函数
             self.updateText(node, value);
@@ -86,7 +124,11 @@ export default class Compiler {
     		case 'class':
     			node.className = value;
     			break;
-    		default:
+			default:
+				let subComp = this.getComponent(node.tagName);
+				if (subComp) {
+					subComp.props[option] = value;
+				}
     			console.log('for props');
 
     	}
@@ -115,7 +157,7 @@ export default class Compiler {
     compileModel (node, attr) {
     	let self = this;
     	let exp = attr.value;
-    	let initModel = this._component.getData()[exp];
+    	let initModel = this._component.getData()[exp] || this._component.getProps()[exp];
         this.updateModel(node, initModel);  // 将初始化的数据初始化到视图中
         node.oninput = function () {
         	self._component.getData()[exp] = node.value;
@@ -131,7 +173,7 @@ export default class Compiler {
     	let attrName = attr.name;
     	let option = attrName.split(':')[1];
     	let exp = attr.value;
-    	let initBind = this._component.getData()[exp];
+    	let initBind = this._component.getData()[exp] || this._component.getProps()[exp];
     	this.updateBind(node, option, initBind);
         node.removeAttribute(attr.name);
 
@@ -148,7 +190,7 @@ export default class Compiler {
     compileIfAndElse (node, attr) {
     	let self = this;
     	let exp = attr.value;
-    	let initIf = this._component.getData()[exp];
+    	let initIf = this._component.getData()[exp] || this._component.getProps()[exp];
     	let nextNode = node.nextElementSibling;
     	let nextAttrs;
     	if (nextNode) {
@@ -184,7 +226,7 @@ export default class Compiler {
     		item = options[0].replace('(', '').replace(')', '').trim();
     	}
     	
-    	let initList = this._component.getData()[exp];
+    	let initList = this._component.getData()[exp] || this._component.getProps()[exp];
         this.updateFor(node, initList, item, index);  // 将初始化的数据初始化到视图中
     	new Watcher(this._component, exp, function (list) { // 生成订阅器并绑定更新函数
             self.updateFor(node, list, item, index);
