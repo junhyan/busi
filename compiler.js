@@ -10,8 +10,8 @@ export default class Compiler {
 	constructor (component) {
 		this._component = component;
 		this._el = component.getComponentEl();
-		this.init();
-		this.isFor = false;
+		// this.init();
+		// this.isFor = false;
 	}
 	init () {
         if (this._el) {

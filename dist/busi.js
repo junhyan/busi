@@ -75,8 +75,8 @@
   var Compiler = function Compiler (component) {
   		this._component = component;
   		this._el = component.getComponentEl();
-  		this.init();
-  		this.isFor = false;
+  		// this.init();
+  		// this.isFor = false;
   	};
   	Compiler.prototype.init = function init () {
       if (this._el) {
@@ -382,28 +382,28 @@
   }
 
   var components = [];
-  var Component = function Component (compOptions) {
+  var Component = function Component () {};
+
+  Component.prototype.init = function init (compOptions) {
       this._id = compOptions.bId;
       this._name = compOptions.bName;
       this._template = compOptions.template;
       this._el = compOptions.el || this.parseTemplate(this._template);
       this._props = compOptions.props;
       this._data = compOptions.data;
-      this.init(compOptions);
-  };
-  Component.prototype.init = function init (compOptions) {
-      var self = this;
-      Object.keys(this._data).forEach(function(key) {
-          self.proxy(key);
-      });
+      // let self = this;
+      // Object.keys(this._data).forEach(function(key) {
+      // self.proxy(key);
+      // });
       this.beforeCreate(compOptions);
       this._observer = new Observer(this._data);
       this.create(compOptions);
       // TODO 写一个待优化的遍历，之后与compiler合并 or 不合并
-      new Compiler(this);
+      new Compiler(this).init();
       this.beforeMount (compOptions);
       this.mountComponents(this._el);
       this.afterMount(compOptions);
+
   };
   Component.prototype.beforeCreate = function beforeCreate (compOptions) {
       if (compOptions.beforeCreate) {
@@ -500,7 +500,8 @@
   var Busi = function Busi (instance) {
       //this._data = instance.component.data;
       //this.init(instance);
-      this._componet = new Component(instance.component);
+      this._componet = new Component();
+      this._componet.init(instance.component);
   };
   Busi.prototype.getinnerComponent = function getinnerComponent () {
       return this._componet;
@@ -517,7 +518,8 @@
   Component.extend = function (compOptions) {
       var superClass = this;
       var subClass = function (compOptions) {
-          superClass.call(this, compOptions);
+          //superClass.call(this);
+          this.init(compOptions);
       };
       subClass.prototype = Object.create(superClass.prototype);
       subClass.prototype.constructor = subClass;

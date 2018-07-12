@@ -2,28 +2,26 @@ import Compiler from './compiler';
 import Observer from './observer';
 export const components = [];
 export class Component {
-    constructor (compOptions) {
+    init (compOptions) {
         this._id = compOptions.bId;
         this._name = compOptions.bName;
         this._template = compOptions.template;
         this._el = compOptions.el || this.parseTemplate(this._template);
         this._props = compOptions.props;
         this._data = compOptions.data;
-        this.init(compOptions);
-    }
-    init (compOptions) {
-        let self = this;
-        Object.keys(this._data).forEach(function(key) {
-            self.proxy(key);
-        });
+        // let self = this;
+        // Object.keys(this._data).forEach(function(key) {
+        //     self.proxy(key);
+        // });
         this.beforeCreate(compOptions);
         this._observer = new Observer(this._data);
         this.create(compOptions);
         // TODO 写一个待优化的遍历，之后与compiler合并 or 不合并
-        new Compiler(this);
+        new Compiler(this).init();
         this.beforeMount (compOptions);
         this.mountComponents(this._el);
         this.afterMount(compOptions);
+
     }
     beforeCreate (compOptions) {
         if (compOptions.beforeCreate) {

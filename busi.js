@@ -5,7 +5,8 @@ export default class Busi {
     constructor (instance) {
         //this._data = instance.component.data;
         //this.init(instance);
-        this._componet = new Component(instance.component);
+        this._componet = new Component();
+        this._componet.init(instance.component);
     }
     getinnerComponent () {
         return this._componet;
@@ -23,7 +24,8 @@ Busi.component = function(name, instance) {
 Component.extend = function (compOptions) {
     let superClass = this;
     let subClass = function (compOptions) {
-        superClass.call(this, compOptions);
+        //superClass.call(this);
+        this.init(compOptions);
     }
     subClass.prototype = Object.create(superClass.prototype);
     subClass.prototype.constructor = subClass;
